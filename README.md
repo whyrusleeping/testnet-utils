@@ -38,10 +38,12 @@ Then try:
 $ sudo ./latency off
 ```
 
-And it will return to normal.
+And it will return to normal. NOTE: you will have to turn the latency off
+before changing it to a new value.
 
 You can also specify your own (as seen above):
 ```
+$ sudo ./latency off
 $ sudo ./latency on 20ms
 ```
 This will set a 20ms delay on *each* link, meaning the total RTT will be 40ms.
@@ -49,6 +51,7 @@ This will set a 20ms delay on *each* link, meaning the total RTT will be 40ms.
 Having the same exact latency constantly isnt really how real network work, so
 if you like, you can throw in some jitter:
 ```
+$ sudo ./latency off
 $ sudo ./latency on 50ms 5ms
 ```
 
