@@ -9,6 +9,7 @@ or something.
 $ sudo ./latency on # defaults to 50ms delay per link -> 100ms rtt
 $ sudo ./latency off
 $ sudo ./latency on 150ms
+$ sudo ./latency on 150ms 10ms # adds a 10ms jitter, normally distributed
 ```
 
 ## Try it out
@@ -43,4 +44,14 @@ You can also specify your own (as seen above):
 ```
 $ sudo ./latency on 20ms
 ```
+This will set a 20ms delay on *each* link, meaning the total RTT will be 40ms.
+
+Having the same exact latency constantly isnt really how real network work, so
+if you like, you can throw in some jitter:
+```
+$ sudo ./latency on 50ms 5ms
+```
+
+This will add a 5ms jitter to each link, based on a normal distribution, meaning
+that the total RTT between the nodes should be from 90ms to 110ms
 

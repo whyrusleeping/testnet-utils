@@ -3,12 +3,18 @@
 enable_latency() {
 	iface=$1
 	lat=$2
+	opts=
 	if [ -z $lat ]
 	then
 		lat=100ms
 	fi
-	echo setting latency on $iface to $lat
-	tc qdisc add dev $iface root netem delay $lat
+	if [ -n $3 ]
+	then
+		opts="$3 distribution normal"
+	fi
+
+	echo setting latency on $iface to $lat, opts = $opts
+	tc qdisc add dev $iface root netem delay $lat $opts
 }
 
 disable_latency() {
