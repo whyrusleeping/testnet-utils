@@ -6,10 +6,10 @@ or something.
 
 ## Usage
 ```
-$ sudo ./ctrlnet lat on 150ms
+$ sudo ./ctrlnet lat 150ms
 $ sudo ./ctrlnet lat off
-$ sudo ./ctrlnet lat on 150ms 10ms # adds a 10ms jitter, normally distributed
-$ sudo ./ctrlnet loss 5%  # set 5% packet loss
+$ sudo ./ctrlnet lat 150ms 10ms # adds a 10ms jitter, normally distributed
+$ sudo ./ctrlnet rate 10mbit  # set 5mbit bandwidth cap
 ```
 
 ## Try it out
@@ -42,7 +42,7 @@ And it will return to normal.
 
 You can also specify your own (as seen above):
 ```
-$ sudo ./ctrlnet lat on 20ms
+$ sudo ./ctrlnet lat 20ms
 ```
 This will set a 20ms delay on *each* link, meaning the total RTT will be 40ms.
 
