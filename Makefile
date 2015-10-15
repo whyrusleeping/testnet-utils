@@ -1,4 +1,6 @@
+DESTDIR=/usr/bin
+
 all:
 
 install:
-	cp ctrlnet /usr/bin/ctrlnet
+	cp ctrlnet ${DESTDIR}/ctrlnet
