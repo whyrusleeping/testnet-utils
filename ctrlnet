@@ -56,7 +56,7 @@ latency_control() {
 set_loss() {
 	iface=$1
 	prob=$2
-	tc qdisc add dev $iface root netem loss $prob 25%
+	tc qdisc change dev $iface root netem loss $prob
 }
 
 loss_control() {
@@ -67,6 +67,7 @@ loss_control() {
 	fi
 	for i in `list_veth_interfaces`
 	do
+		init_interface $i
 		set_loss $i $prob
 	done
 }
