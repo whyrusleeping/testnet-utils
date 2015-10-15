@@ -4,31 +4,50 @@ list_veth_interfaces() {
 	ls /sys/devices/virtual/net | grep veth
 }
 
-enable_latency() {
+set_latency() {
 	iface=$1
 	lat=$2
 	opts=
-	if [ -z $lat ]
+
+	jitter=$3
+
+	lat=${2:-50ms}
+	if [ -n "$jitter" ]
 	then
-		lat=50ms
-	fi
-	if [ -n "$3" ]
-	then
-		opts="$3 distribution normal"
+		lat="$lat $jitter distribution normal"
 	fi
 
-	echo setting latency on $iface to $lat, opts = $opts
-	tc qdisc change dev $iface root netem delay $lat $opts
+	# check if there is a bandwidth rate limit set already
+	rateval=$(current_if_rate $iface)
+	if [ -n "$rateval" ]
+	then
+		rateval="rate $rateval"
+	fi
+
+	echo setting latency on $iface to $lat
+	tc qdisc change dev $iface root netem delay $lat $rateval
 }
 
-init_interface() {
-	iface=$1
-	if tc qdisc | grep $iface > /dev/null
+# returns the latency already applied to the given interface
+current_if_latency() {
+	maybedelay=$(tc qdisc show dev $1 | grep delay)
+	if [ -z "$maybedelay" ]
 	then
 		return
-	else
-		tc qdisc add dev $iface root netem delay 0ms
 	fi
+	nmargs=$(echo $maybedelay | sed 's/.*\sdelay\s\([^$]*\).*/\1/')
+	mjitter=$(echo $nmargs | awk '{ print $2 }')
+	if [ $mjitter == "rate" ] || [ -z $mjitter ]
+	then
+		echo $nmargs | awk '{ print $1 }'
+	fi
+
+	echo $nmargs | awk '{ printf "%s %s distribution normal", $1, $2 }'
+}
+
+# returns the bandwidth rate limit already applied to the given interface
+current_if_rate() {
+	tc qdisc show dev $1 | grep rate | sed 's/.*\srate\s\([^ ]*\).*/\1/'
 }
 
 latency_control() {
@@ -40,19 +59,80 @@ latency_control() {
 	do
 		init_interface $i
 		case $com in
-		on)
-			enable_latency $i $args
+		*ms)
+			set_latency $i $com $args
 			;;
 		off)
-			enable_latency $i 0ms
+			set_latency $i 0ms
 			;;
 		*)
-			echo "options are on and off"
+			echo "either specify a delay in ms or 'off'"
 			exit 1
 		esac
 	done
 }
 
+# init interface ensures that the qdisc has been created for the given
+# interface, if not, it creates one
+init_interface() {
+	iface=$1
+	if tc qdisc show dev $iface | grep root  > /dev/null
+	then
+		return
+	else
+		tc qdisc add dev $iface root netem delay 0ms
+	fi
+}
+
+clear_all() {
+	for i in `list_veth_interfaces`
+	do
+		clear_iface $i
+	done
+}
+
+clear_iface() {
+	iface=$1
+	tc qdisc del dev $iface root 
+}
+
+set_ratelimit() {
+	iface=$1
+	rate=$2
+
+	# check if there is a latency set already
+	latval=$(current_if_latency $iface)
+	if [ -n "$latval" ]
+	then
+		latval="delay $latval"
+	fi
+
+	echo setting bandwidth on $iface to $rate with lat = $latval
+	tc qdisc change dev $iface root netem $latval rate $rate
+}
+
+rate_control() {
+	com=$1
+	shift
+	args=$@
+
+	for i in `list_veth_interfaces`
+	do
+		init_interface $i
+		case $com in
+		off)
+			lat=$(current_if_latency $i)
+			clear_iface $i
+			set_latency $i $lat
+			;;
+		*)
+			set_ratelimit $i $com
+			;;
+		esac
+	done
+}
+
+# TODO: loss correctly
 set_loss() {
 	iface=$1
 	prob=$2
@@ -72,15 +152,30 @@ loss_control() {
 	done
 }
 
+show_opts() {
+	for i in `list_veth_interfaces`
+	do
+		lat=$(current_if_latency $i)
+		lat=${lat:-unset}
+		rate=$(current_if_rate $i)
+		rate=${rate:-unset}
+		echo $i: lat=\"$lat\"    rate=\"$rate\"
+
+	done
+}
+
 usage() {
 	echo ctrlnet - a utility for simulating network conditions
 	echo usage:
 	echo
 	echo Set some latency:
-	echo \$ ctrlnet lat on 50ms
+	echo \$ ctrlnet lat 50ms
 	echo
 	echo Now, with jitter:
-	echo \$ ctrlnet lat on 50ms 6ms
+	echo \$ ctrlnet lat 50ms 6ms
+	echo
+	echo Set some bandwidth limits
+	echo \$ ctrlnet rate 100kbit
 }
 
 com=$1
@@ -98,10 +193,22 @@ lat)
 	latency_control $args
 	;;
 loss)
+	echo "packet loss control not working yet"
+	exit 1
 	loss_control $args
+	;;
+rate)
+	rate_control $args
+	;;
+ls)
+	show_opts
+	;;
+clear)
+	clear_all
 	;;
 *)
 	echo unrecognized command $com
+	usage
 	exit 1
 esac
 
