@@ -1,0 +1,89 @@
+#!/bin/bash
+
+list_veth_interfaces() {
+	ls /sys/devices/virtual/net | grep veth
+}
+
+enable_latency() {
+	iface=$1
+	lat=$2
+	opts=
+	if [ -z $lat ]
+	then
+		lat=50ms
+	fi
+	if [ -n "$3" ]
+	then
+		opts="$3 distribution normal"
+	fi
+
+	echo setting latency on $iface to $lat, opts = $opts
+	tc qdisc change dev $iface root netem delay $lat $opts
+}
+
+init_interface() {
+	iface=$1
+	if tc qdisc | grep $iface > /dev/null
+	then
+		return
+	else
+		tc qdisc add dev $iface root netem delay 0ms
+	fi
+}
+
+latency_control() {
+	com=$1
+	shift
+	args=$@
+
+	for i in `list_veth_interfaces`
+	do
+		init_interface $i
+		case $com in
+		on)
+			enable_latency $i $args
+			;;
+		off)
+			enable_latency $i 0ms
+			;;
+		*)
+			echo "options are on and off"
+			exit 1
+		esac
+	done
+}
+
+set_loss() {
+	iface=$1
+	prob=$2
+	tc qdisc add dev $iface root netem loss $prob 25%
+}
+
+loss_control() {
+	prob=$1
+	if [ -z $prob ]
+	then
+		prob=0.1%
+	fi
+	for i in `list_veth_interfaces`
+	do
+		set_loss $i $prob
+	done
+}
+
+com=$1
+shift
+args=$@
+
+case $com in
+lat)
+	latency_control $args
+	;;
+loss)
+	loss_control $args
+	;;
+*)
+	echo unrecognized command $com
+	exit 1
+esac
+
