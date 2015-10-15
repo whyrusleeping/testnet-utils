@@ -1,9 +1,13 @@
 #!/bin/bash
 
+# lists out all veth interfaces (naming convention used by docker)
 list_veth_interfaces() {
 	ls /sys/devices/virtual/net | grep veth
 }
 
+# set_latency <interface> <latency> [<jitter>]
+#
+# sets the latency of a given interface 
 set_latency() {
 	iface=$1
 	lat=$2
@@ -28,6 +32,8 @@ set_latency() {
 	tc qdisc change dev $iface root netem delay $lat $rateval
 }
 
+# current_if_latency <interface>
+#
 # returns the latency already applied to the given interface
 current_if_latency() {
 	maybedelay=$(tc qdisc show dev $1 | grep delay)
@@ -45,11 +51,16 @@ current_if_latency() {
 	echo $nmargs | awk '{ printf "%s %s distribution normal", $1, $2 }'
 }
 
+# current_if_rate <interface>
+#
 # returns the bandwidth rate limit already applied to the given interface
 current_if_rate() {
 	tc qdisc show dev $1 | grep rate | sed 's/.*\srate\s\([^ ]*\).*/\1/'
 }
 
+# latency_control <interface> < <latency> [jitter] | off >
+#
+# returns the bandwidth rate limit already applied to the given interface
 latency_control() {
 	com=$1
 	shift
@@ -72,6 +83,8 @@ latency_control() {
 	done
 }
 
+# init_interface <interface>
+#
 # init interface ensures that the qdisc has been created for the given
 # interface, if not, it creates one
 init_interface() {
@@ -84,6 +97,7 @@ init_interface() {
 	fi
 }
 
+# clears all settings on all interfaces
 clear_all() {
 	for i in `list_veth_interfaces`
 	do
@@ -91,11 +105,16 @@ clear_all() {
 	done
 }
 
+# clear_iface <interface>
 clear_iface() {
 	iface=$1
 	tc qdisc del dev $iface root 
 }
 
+
+# set_ratelimit <interface> <limit>
+#
+# sets the bandwidth limit on a given interface
 set_ratelimit() {
 	iface=$1
 	rate=$2
@@ -111,6 +130,9 @@ set_ratelimit() {
 	tc qdisc change dev $iface root netem $latval rate $rate
 }
 
+# rate_control < rate | off >
+#
+# sets bandwidth limit on all veth interfaces
 rate_control() {
 	com=$1
 	shift
@@ -152,6 +174,9 @@ loss_control() {
 	done
 }
 
+# show_opts
+#
+# shows settings for all veth interfaces
 show_opts() {
 	for i in `list_veth_interfaces`
 	do
