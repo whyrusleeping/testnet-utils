@@ -72,9 +72,26 @@ loss_control() {
 	done
 }
 
+usage() {
+	echo ctrlnet - a utility for simulating network conditions
+	echo usage:
+	echo
+	echo Set some latency:
+	echo \$ ctrlnet lat on 50ms
+	echo
+	echo Now, with jitter:
+	echo \$ ctrlnet lat on 50ms 6ms
+}
+
 com=$1
 shift
 args=$@
+
+if [ -z $com ]
+then
+	usage
+	exit 0
+fi
 
 case $com in
 lat)
